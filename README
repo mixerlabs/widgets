@@ -1,3 +1,11 @@
+A WORD OF CAUTION
+
+  This is currently just a code drop of our widget publication
+  system. It will need some work (mostly reshuffling of imports) to be
+  installable as an independent Django app. If you have any interest
+  in this, please send us a message (through GitHub), and we'll be
+  glad to help!
+
 INTRODUCTION
 
   Widgets provide componentized editing of pages, taking care of most
