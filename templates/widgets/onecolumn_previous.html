@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% load user %}
+{% load goodtimes %}
+
+{% block head_title %}
+  Version -{{ prev_num }} of {{ title }}
+{% endblock %}
+
+{% block content %}
+  <div>
+    edited by {{ user_and_ip|linked_user_or_ip }}
+    {{ edit_time|date:"\o\n D, M j \a\t g:i:s a" }}
+    ({{ edit_time|goodtimes}})
+  </div>
+  <div id="widgets">{{ contents }}</div>
+{% endblock %}
+
+
+{% block right_content %}
+  <div class="section">
+    <div class="sectioncontents">
+      <div class="titlebar">
+        <h1>{{ prev_count }} previous versions:</h1>
+      </div>
+      <div style="font-size:1.27em;">
+        {% if prev_link %}
+        <a href="{{ prev_link }}">&laquo; prev</a>
+        {% else %}
+        <span class="help">&laquo; prev</span>
+        {% endif %}
+        &nbsp; Version -{{ prev_num }} &nbsp;
+        {% if next_link %}
+        <a href="{{ next_link }}">next &raquo;</a>
+        {% else %}
+        <span class="help">next &raquo;</span>
+        {% endif %}
+      </div>
+      <div class="top8">
+        <a href="{{ link }}">Editable Live Version</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

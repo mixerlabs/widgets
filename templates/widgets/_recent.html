@@ -1,0 +1,44 @@
+{% load goodtimes %}
+{% load thumb %}
+{% load utils %}
+{% load widgets %}
+
+{% if recent %}
+  {% if not city_layout %}
+    <div class="section">
+      <div class="sectioncontents">
+        <div class="titlebar">
+          <h1>{% if title %}{{ title }}{% else %}Recent Pages{% endif %}</h1>
+        </div>
+  {% endif %}
+    <ul>
+    {% for page in recent %}
+      <li class="roundedpix">
+        <div class="group-label">
+          {% obj_thumb page %}
+        </div> 
+        {% if city_layout %}
+          <div class="group-short fixed225 help">
+        {% else %}
+          <div class="group-short fixed260 help">
+        {% endif %}
+          <div>
+            <a href="{{ page.get_absolute_url }}">{% filter truncate_characters:40 %}{{ page.title }}{% endfilter %}</a>
+          </div>
+          <div class="mini">{{ page.modified_on|goodtimes }}</div>
+        </div>
+      </li>
+    {% endfor %}
+    </ul>
+    <div class="actions">
+      <div class="group mini">
+        <a href="{% widget_directory_url wiki_slug %}">See all &raquo;</a>
+        <span class="divider help">|</span>
+        <a href="{% widget_changes_url wiki_slug %}">Recent changes &raquo;</a>
+      </div>
+    </div>
+  {% if not city_layout %}
+      </div>
+    </div>
+  {% endif %}
+{% endif %}

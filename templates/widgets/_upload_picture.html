@@ -1,0 +1,241 @@
+{% load static %}
+{% load widgets %}
+
+<script 
+  type="text/javascript" 
+  src="{% static_url js/swfupload.js %}">
+</script>
+{% comment %}We need the cookie plugin for authentication.{% endcomment %}
+<script 
+  type="text/javascript" 
+  src="{% static_url js/swfupload.cookies.js %}">
+</script>
+<script 
+  type="text/javascript" 
+  src="{% static_url js/jquery.swfupload.js %}">
+</script>
+
+
+<div class="subsection">
+  <div id=__upload_container>
+    <input type=button id=__upload_button />
+  </div>
+</div>
+
+<div class="subsection">
+  <hr class="light" />
+</div>
+
+<div class="section">
+  <div class="entity">
+    <h4 class="group-label" 
+        style="margin:0px 6px 0px 0px;">Or Choose From Flickr:</h4>
+    <div class="group-label">
+      <input id="__query" type="text"
+             title="Enter some keywords"
+             value="{{ query }}" class="fixed225" />
+    </div>
+    <div class="group-label">
+      <a href="javascript:__set_page(1)" class="button">
+        <span>Find</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<table class="autowidth {% if not geo_pt %}top {% endif %}photo-grid">
+  {% if geo_pt %}
+    <tr><td colspan="7">
+      <div id="__geo_div" style="display:none; margin-left:15px">
+        <input id="__geo_checkbox" type="checkbox" style="width:auto"
+            value="on" {% if geo_check %}checked="on"{% endif %} >
+        <label for="__geo_checkbox"></label>
+      </div>
+    </td></tr>
+  {% endif %}
+  <tr>
+    <td>
+      <div id="__aleft" class="arrow">
+        <a href="javascript:__change_page(-1)" class="left"><span /></a>
+        <img src="{% static_url img/arrow-left_disabled.gif %}" />
+      </div>
+    </td>
+    <td><div id="__i0" class="thumbnail-size"></div></td>
+    <td><div id="__i1" class="thumbnail-size"></div></td>
+    <td><div id="__i2" class="thumbnail-size"></div></td>
+    <td><div id="__i3" class="thumbnail-size"></div></td>
+    <td><div id="__i4" class="thumbnail-size"></div></td>
+    <td>
+      <div id="__aright" class="arrow">
+        <a href="javascript:__change_page(1)" class="right"><span /></a>
+        <img src="{% static_url img/arrow-right_disabled.gif %}" />
+      </div>
+    </td>
+  </tr>
+</table>
+
+<div id=__waiting style="display:none; text-align:center;" class="top8">
+  <img src="{% static_url img/loading.gif %}">
+</div>
+
+<script type="text/javascript">
+  {% comment %}| FILE UPLOAD{% endcomment %}
+  $("#__upload_container").swfupload({
+    upload_url         : "{{ upload_url }}",
+    flash_url          : "/static/swf/swfupload.swf", // XXX - static url
+    file_size_limit    : "2 MB",
+    file_post_name     : "picture",
+    button_image_url   : "{% static_url img/button-chooseimage.png %}",
+    button_placeholder : $("#__upload_button")[0],
+    button_text        : "<span></span>",
+    button_height      : 24,
+    button_width       : 249,
+  }).bind("fileQueued", function (event, file) {
+    {% if not is_authenticated %}
+      $.mixerbox("{% url login_dialog %}", "captcha_login", function(paa) {
+        $.swfupload.getInstance("#__upload_container").refreshCookies()
+        $("#__upload_container").swfupload("startUpload")
+        $("#__waiting").show()
+        {% comment %}
+          // see comments in _call.js about paa and page reloading
+        {% endcomment %}
+      })
+    {% else %}
+      $(this).swfupload("startUpload")
+      $("#__waiting").show()
+    {% endif %}
+  }).bind("uploadError", function(event, file, error_code, message) {
+    alert("Failed to upload image :-( " + message)
+    __cancel()
+  }).bind("uploadSuccess", function (event, file, serverData) {
+    {% widget_call widget "configure-picture" %}
+      null
+    {% widget_callback data %}
+      __html(data)
+    {% endwidget_call %}
+  }).bind("uploadProgress", function (event, file, bytes, total) {
+    $("#__pct").html((100 * bytes / total) + "%")
+  })
+
+
+  {% comment %}| FLICKR UPLOADR{% endcomment %}
+  var __flickr_page_num = 1
+  var __mutable_terms = null
+  var __default_search_terms = '{{ default_search_terms }}'
+  var __geo_constraint = ''
+
+  function __thumb(item) {
+    return "http://farm" + escape(item.farm) + ".static.flickr.com/"
+        + escape(item.server) + "/" + escape(item.id) + "_"
+        + escape(item.secret) + "_s.jpg"
+  }
+
+  function __set_page(page) {
+    __flickr_page_num = page
+    var attributes = "&page=" + __flickr_page_num
+    var query = $("#__query").val()
+    if (query === $("#__query").attr('title'))
+      query = ''
+    if (__mutable_terms === null) __mutable_terms = __default_search_terms
+    if (query === '') query = __mutable_terms
+    if (query !== '' ) {
+      attributes += "&sort=relevance&text=" + escape(query)      
+    } else {
+      attributes += "&sort=interestingness-desc"
+    }
+    if ($('#__geo_checkbox').is(':checked')) attributes += geo_constraint
+    $("*").css('cursor', 'wait')
+    $.getJSON("http://api.flickr.com/services/rest/?method=flickr.photos.search"
+              + "&api_key={{ flickr_api_key }}&license=4%2C5%2C6%2C7"
+              + "&safe_search=1&per_page=5&extras=geo%2Ctags"
+              + attributes + "&format=json&jsoncallback=?", function(data) {
+      if (data.photos.total < 1 && query === __mutable_terms && query !== '') {
+        // On each empty result, strip off a word at the 
+        // end of the string and rerun the shorter query.
+        __mutable_terms = __mutable_terms.replace(/\s?\S*$/, '')
+        setTimeout('__set_page(1)', 1)
+        return        
+      }
+      if (data.photos.page > 1) {
+        $("#__aleft *").addClass('enabled')
+      } else {
+        $("#__aleft *").removeClass('enabled')
+      }
+      if (data.photos.page < data.photos.pages) {
+        $("#__aright *").addClass('enabled')
+      } else {
+        $("#__aright *").removeClass('enabled')
+      }
+      var max = 0
+      $.each(data.photos.photo, function(i, item) {
+        max = i + 1
+        $("#__i" + i).html('<a href="javascript:undefined"><img /></a>')
+                     .addClass('frame')
+                     .removeClass('invisible-frame')
+        $("#__i" + i + " a").attr('title', item.title).click(function() {
+          setTimeout(function() { __flickr_click(item); item=null }, 1)
+        })
+        $("#__i" + i + " a img").attr('src', __thumb(item))
+      })
+      while (max < 5) $("#__i" + max++).html('&nbsp;').removeClass('frame').
+          addClass('invisible-frame')
+      $("*").css('cursor', '')
+    })
+  }
+
+  function __change_page(delta) {
+    __set_page(__flickr_page_num + delta)
+  }
+
+  function __flickr_click(item) {
+    $("#__waiting").show()
+    {% widget_call widget "upload-flickr-image" %}
+      { image_id: item['id'] }
+    {% widget_callback data %}
+      __html(data)
+    {% endwidget_call %}
+  }
+
+  {% comment %}| INITIALIZATION{% endcomment %}
+  // We have to mixertwiddle manually because we're 
+  // not around for the document load.
+  $("#__query").mixertwiddle(
+  ).keypress(function (e) {
+    if (e.keyCode == 13) { // Enter
+      __set_page(1)
+    }
+  }).keydown(function (e) {
+    if (e.keyCode == 27) {  // Esc
+      $(this).blur()
+    }
+  })
+
+  {% if geo_pt %}
+    $.getJSON("http://api.flickr.com/services/rest/?method=flickr.places."
+        + "findByLatLon&api_key={{ flickr_api_key }}"
+        + "&lat={{ geo_pt.y|urlencode }}&lon={{ geo_pt.x|urlencode }}"
+        + "&accuracy=11&format=json&jsoncallback=?", function(data) {
+      if (data.places && data.places.total >= 1) {
+        var place = data.places.place[0]
+        $('#__geo_div label').text('Only photos taken in '
+            + place.name.replace(', United States', ''))
+        $('#__geo_checkbox').change(function() {
+          __mutable_terms = null
+          __set_page(1)
+        })
+        $('#__geo_div').show()
+        geo_constraint = "&place_id=" + encodeURIComponent(place.place_id)
+        __change_page(0)
+      }
+    })
+  {% else %}
+    __change_page(0)
+  {% endif %}
+
+  function __save_cb(cb) {
+    __html('')
+    cb()
+  };
+
+</script>
+

@@ -1,0 +1,18 @@
+{% comment %}
+This template is used to render a widget in situ, but without editing buttons.
+{% endcomment %}
+
+{% load widgets %}
+
+<div class="widget" id="__container">
+  <div class="{{ widget.css_container }}" id=__outer>
+    <div class="widgetcontents" id=__widgetcontents
+         style="position: relative;">
+      <div id=__contents>
+        {% if widget.css_outer %}<div class={{widget.css_contents}}>{% endif %}
+          {{ contents }}
+        {% if widget.css_outer %}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>

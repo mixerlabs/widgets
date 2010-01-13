@@ -1,0 +1,119 @@
+{% load widgets %}
+{% load utils %}
+
+<table>
+  <tr>
+    <td align="right">
+      <div class="label">List Title:</div>
+    </td>
+    <td>
+      <input type="text"  
+             value="{{ widget.title|orempty|force_escape }}" 
+             class="attribute roundedfield-padded" 
+             id="__title"  
+             title="Optional" />
+    </td>
+  </tr>  
+  <tr class="desc">
+    <td valign="top" align="right">
+      <div class="label">List Description:</div>
+    </td>
+    <td>
+      <textarea 
+         id="__description" 
+         class="sectionwidget-edit" 
+         title="Optional">{{ widget.description|orempty }}</textarea>
+    </td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>
+      <ul id=__list style="margin-left:0px">
+        {% for item in widget.items %}
+          {% include "widgets/_edit_list_item.html" %}
+        {% endfor %}
+      </ul>
+
+    </td>
+  </tr> 
+  <tr>
+    <td align="right">
+      <div class="label">List Item:</div>
+    </td>
+    <td>
+      <div class="group-label">
+        <input type="text"
+               class="group-short roundedfield-padded" 
+               id=__add></input>
+        </div>
+      <a href="javascript:__add_item()" class="button"><span>Add</span></a>
+    </td>
+  </tr>
+</table>
+
+<div id=__li_template style="display: none;">
+{% include "widgets/_edit_list_item.html" %}
+</div>
+
+<script type="text/javascript">
+  $("#__title,#__description").mixertwiddle().keydown(function (e) {
+    if (e.keyCode == 27) // Esc
+      $(this).blur()
+  })
+
+  function __refresh_remove_href() {
+    $("ul#__list a#remove_href").click(function() {
+      $(this).parent().parent().remove()
+    })
+  }
+  __refresh_remove_href()
+
+  function __add_item() {
+    var cloned = $("#__li_template > li").clone()
+    $(cloned).find("input").val($("#__add").val())
+    $(cloned).appendTo("ul#__list")
+    $("#__add").val('')
+    __refresh_remove_href()
+  }
+
+  {% comment %}
+    Make the lists themselves sortable so they can be reordered.
+  {% endcomment %}
+  $("ul#__list").sortable({
+    opacity: 0.6,
+    axis: 'y',
+  })
+
+  $("input#__add").keypress(function (e) {
+    if (e.keyCode == 13) {
+      __add_item()
+      return false
+    }
+  }).keydown(function (e) {
+    if (e.keyCode == 27) {  // Esc
+      $(this).blur()
+    }
+  }).focus()
+
+  function __save_cb(cb) {
+    var items = Object()
+    var num = 0
+    $("ul#__list > li input").each(function() {
+      items["item_" + num++] = $(this).val()
+    })
+
+    items["title"] = $("#__title").val()
+    if (items["title"] == $("#__title").attr("title"))
+      items["title"] = ""
+    items["description"] = $("#__description").val()
+    if (items["description"] == $("#__description").attr("title"))
+      items["description"] = ""
+
+    {% widget_call widget "save" %}
+      items
+    {% widget_callback data %}
+      __html(data)
+      cb()
+    {% endwidget_call %}
+  };
+</script>

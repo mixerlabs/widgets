@@ -1,0 +1,27 @@
+{% load widgets %}
+
+<input id="__input"
+       type="text"
+       class="roundedfield-padded nofloat"  
+       value="{{ widget.contents|force_escape }}"></input>
+
+<script type="text/javascript">
+  $("#__input").keydown(function (e) {
+    if (e.keyCode == 27) {  // Esc
+      __cancel()
+    }
+  }).keypress(function (e) {
+    if (e.keyCode == 13) { // Enter
+      __save()
+    }
+  }).focus()
+
+  function __save_cb(cb) {
+    {% widget_call widget "save" %}
+      { contents: $("#__input").val() }
+    {% widget_callback data %}
+      __html(data)
+      cb()
+    {% endwidget_call %}
+  };
+</script>

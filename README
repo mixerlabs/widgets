@@ -1,0 +1,108 @@
+INTRODUCTION
+
+  Widgets provide componentized editing of pages, taking care of most
+  things for you, so you are free to write your components without
+  much care of state, history, page placement, interference with other
+  widgets, etc.
+
+  Widgets have their state automatically handled by pickling and
+  unpickling their python object instances. Widgets are kept in a
+  tree, and updates trickle up to the root so that it always contains
+  the latest references. Every state ever "frozen" is kept, and can
+  thus be reached from page histories, reverted, diff'd against, etc.
+
+API
+
+  Widgets are responsible for rendering themselves to HTML. The parent
+  page places this correctly within the page, and can dynamically
+  update it through AJAX requests. Widgets also need to be able to
+  render an *editor*, which modifies state on the widget. To help with
+  inline editing, a number of utilities are provided to ease AJAX
+  interaction, both in the (Python) views & as django template helpers
+  to make the call from the client side.
+
+  The heading widget views are defined fully as follows (a
+  serendipitous example as it contains exactly the set of required
+  implementations):
+
+    from .widget import Widget
+    from .router import view, ajax, render_template_with_namespace
+
+    class Heading(Widget):
+        """The heading widget providers headers"""
+        css_container = 'header'
+        css_hover     = 'header-over'
+
+        def __init__(self):
+            super(Heading, self).__init__()
+            self.contents = 'Untitled'
+
+        def render(self):
+            return '<h2>%s</h2>' % self.contents
+
+        @render_template_with_namespace
+        def render_edit(self):
+            return 'widgets/_edit_heading.html', {'widget': self}
+
+        @ajax('edit')
+        def edit(self):
+            return self.render_edit()
+
+        @ajax('save')
+        def save(self, contents):
+            self.contents = contents
+            self.freeze()
+            return self.render()
+
+  ``render'' simply returns the HTML necessary to render the widget in
+  situ whereas ``render_edit'' returns the HTML necessary to render
+  the heading editor. The ajax callbacks are:
+
+    ``edit'': Called by the page whenever the user wishes to edit the
+              widget contents. Returns the HTML necessary to render
+              the editor.
+    ``save'': Called by the page when the user wishes to save the
+              edits made. Returns the HTML necessary to render the
+              widget in situ.
+
+  The decorator ``render_template_with_namespace'' provides template
+  namespacing for the widget. In the template, any '__' strings are
+  substituted by a string unique to *that particular instance* of the
+  widget. Similarly, '___' strings are substituted by one unique for
+  that instance *and* the template, thus these are analogous to
+  "protected" and "private" namespaces for widget-templates. Namespaces 
+  are also to comply with the client-side page API. Here is the 
+  template code for rendering:
+
+    {% load widgets %}
+
+    <input id="__input" type="text" value="{{ widget.contents }}"></input>
+
+    <script type="text/javascript">
+      function __save(cb) {
+        {% call widget "save" %}
+          { contents: $("#__input").val() }
+        {% callback data %}
+          __html(data)
+          cb()
+        {% endcall %}
+      };
+    </script>
+
+  Pretty self-explanatory. The page API *provides* ``__html'' (which
+  is actually namespaced by the aforementioned method), and each
+  widget editor has to *define* ``__save''. The page calls into
+  ``__save'' whenever the user hits the save button. Here the template
+  calls into the widget (using the ``call'' template tag to generate
+  the necessary AJAX code), providing a callback (``cb'') to be called
+  whenever the widget is finished saving. The heading widget calls
+  ``__html'' with the new rendered widget (returned from the AJAX
+  call) before telling the page its save is complete.
+
+DELEGATES & PAGES
+
+  Toplevel widgets (ie. pages) sit at the roots of widget trees. These
+  avail themselves of a *delegate* -- a convention of callbacks that
+  provide certain hosted functionality. For example, the toplevel
+  ``reverse()'' calls into its delegate to reverse the path that
+  precedes the widget hierarchy.

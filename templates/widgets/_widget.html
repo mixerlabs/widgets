@@ -1,0 +1,166 @@
+{% comment %}
+This templates is used to render a widget in situ.
+
+The "protected" (ie. per-widget) API exported is:
+
+  __edit     - start editing
+  __save     - save the current state of the widget
+  __cancel   - cancel editing
+  __html     - set the content HTML of the widget
+
+The "protected" API imported is:
+
+  __save_cb   - widgets must define this for a callback to save itself
+  __cancel_cb - (optional) -- call before cancellation
+
+{% endcomment %}
+
+{% load static %}
+{% load widgets %}
+{% load english %}
+
+<script type="text/javascript">
+  var ___editing = false
+  var ___saved_contents = null
+  var ___adding = false
+
+  function __edit(adding) {
+    ___editing = true;
+    if (!adding)
+      ___saved_contents = __html()
+    else
+      ___adding = true
+
+    $("a#__href").hide()
+    $("div#__bar").show()
+    $("div#__headerbar").fadeIn(100)
+
+    $("div#__handle").parent().addClass("{{ widget.css_hover }}")
+
+    ___disable_buttons()
+  }
+
+  function __cancel() {
+    if (typeof __cancel_cb !== "undefined")
+      __cancel_cb()
+
+    if (___adding) {
+      __delete()
+    } else {
+      ___noedit()
+      __html(___saved_contents)
+    }
+  }
+
+  function __save() {
+    $("div#__bar").hide()
+
+    __save_cb(function() {
+      ___noedit()
+      onecolumn_update_edit_info()
+    })
+  }
+
+  function __html(content) {
+    return $("div#__contents").html(content)
+  }
+
+  function ___noedit() {
+    ___editing = false
+    ___adding = false
+    $("div#__handle").parent().removeClass("{{ widget.css_hover }}")
+    $("a#__href").show()
+    $("div#__bar").hide()
+
+    $("div#__headerbar").hide()
+
+    ___enable_buttons()
+  }
+
+  function __delete() {
+    {% widget_call page "delete-widget" %}
+      { which: "__" }
+    {% widget_callback data %}
+      $("#__container").remove()
+    {% endwidget_call %}
+  }
+</script>
+
+<div class="widget" id="__container">
+  <div id=__headerbar class="headerbar widget-handle" style="display: none;">
+    <h2>Edit {{ typename }}</h2>
+  </div>
+  <div class="{{ widget.css_container }}" id=__outer>
+    <div class="handle" id="__handle">
+      <span class="noedit">
+        {% if widget.editable %}
+          <a id="__href" href="javascript:undefined" class="edit"
+             title="Click here to move or edit this section."
+             alt="edit this section"></a>
+        {% endif %}
+      </span>
+    </div>
+    <div class="widgetcontents" id=__widgetcontents
+         style="position: relative;">
+      <a id=__move_button 
+         class="move-widget widget-button container-button widget-handle"
+         style="position: absolute; right: 0px; z-index: 50; display: none;">
+      </a>
+      <div id=__contents>
+        {% if widget.css_outer %}<div class={{widget.css_contents}}>{% endif %}
+          {{ contents }}
+          {% if widget.css_outer %}</div>{% endif %}
+      </div>
+      <div id="__bar" style="display:none;">
+        <br />
+        <a href="javascript:__save()" class="button-default">
+          <span>Save</span></a>
+        <a href="javascript:__cancel()" class="button">
+          <span>Cancel</span></a>
+        <a href="javascript:__delete()" class="button">
+          <span>Delete</span></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $("a#__href").click(function() {
+    if (!___editing) {
+      {% widget_call widget "edit" %}
+        null
+      {% widget_callback data %}
+        __edit()
+        __html(data)
+      {% endwidget_call %}
+    }
+  })
+
+  function ___enable_buttons() {
+    $("div#__handle,a#__move_button")
+      .bind("mouseenter.__buttons", function () {
+        $("#__outer").addClass("{{ widget.css_hover }}")
+    }).bind("mouseleave.__buttons", function () {
+        $("#__outer").removeClass("{{ widget.css_hover }}")
+    })
+
+    $("div#__outer")
+      .bind("mouseenter.__buttons", function() {
+        $(".container-button").hide()
+        $("#__move_button").fadeIn(100)
+    }).bind("mouseleave.__butons", function () {
+        $("#__move_button").fadeOut(100)
+    })
+  }
+
+  function ___disable_buttons() {
+    $("#__move_button").hide()
+    $("*").unbind(".__buttons")
+  }
+
+  {% if adding and widget.editable %}
+    __edit(true)
+  {% else %}
+    ___noedit()
+  {% endif %}
+</script>

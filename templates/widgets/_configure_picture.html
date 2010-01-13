@@ -1,0 +1,98 @@
+{% load static %}
+{% load widgets %}
+{% load thumb %}
+{% load utils %}
+
+<table class="dialogform top15">
+  <tr>
+    <td class="llabel">
+      {% with widget.picture|thumb:"150,300,Pillar" as thumb %}
+      <div class="roundedcornerwrap">
+        <div class="rounded6px-tl_yellow"></div>
+        <div class="rounded6px-tr_yellow"></div>
+        <div class="rounded6px-bl_yellow"></div>
+        <div class="rounded6px-br_yellow"></div>
+        <img width="{{ thumb.get_actual_thumb_size.0 }}"
+             height="{{ thumb.get_actual_thumb_size.1 }}"
+             src = "{{ thumb }}" alt="Uploaded photo."/>
+      </div>
+      {% endwith %}
+    </td>
+    <td>
+      <table class="dialogform">
+        <tr>
+          <td style="text-align:right; padding-bottom:15px;">
+            <span class="emphasis spacer-right">Title:</span>
+          </td> 
+          <td style="padding-bottom:15px;">
+            <div class="inputgroup">
+              <input type="text" 
+                     value="{{ widget.title|orempty }}"
+                     id=__title 
+                     title="Optional" />
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right; padding-bottom:15px;">
+            <span class="emphasis spacer-right">Caption:</span>
+          </td> 
+          <td style="padding-bottom:15px;">
+            <div class="inputgroup">
+              <input type="text" 
+                     value="{{ widget.picture.caption }}"
+                     id=__caption 
+                     title="e.g. A Beautiful Lake" />
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right; padding-bottom:15px;">
+            <span class="emphasis spacer-right">Image Size:</span>
+          </td> 
+          <td style="padding-bottom:15px;">
+            <div class="inputgroup">
+              {% for size in widget.sizes %}
+                <label for="__id_size_{{ forloop.counter0 }}">
+                  <input name="__size"
+                         id="__id_size_{{ forloop.counter0 }}"
+                         type="radio"
+                         class="radio"
+                         value="{{ size }}"
+                         {% ifequal size widget.size %}checked="checked"{% endifequal %}
+                         />{{ size }}
+                </label>
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+      </table>                      
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  $("#__caption,#__title").mixertwiddle().keydown(function (e) {
+    if (e.keyCode == 27) {  // Esc
+      $(this).blur()
+    }
+  })
+
+  function __save_cb(cb) {
+    var caption = $("#__caption").val()
+    if (caption === $("#__caption").attr('title'))
+      caption = ''
+    var title = $("#__title").val()
+    if (title === $("#__title").attr('title'))
+      title = ''
+
+    {% widget_call widget "change-meta" %}
+      { size: $("input[@name='__size']:checked").val(), 
+        caption: caption,
+        title: title }
+    {% widget_callback data %}
+      __html(data)
+      cb()
+    {% endwidget_call %}
+  };
+</script>

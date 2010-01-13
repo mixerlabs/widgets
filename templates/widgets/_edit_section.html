@@ -1,0 +1,171 @@
+{% load widgets %}
+{% load static %}
+{% load utils %}
+
+<div id="__textarea" style="display: none;">
+  <table>
+    <tr>
+      <td>
+        <div class="label">Section Title:</div>
+      </td>
+      <td>
+        <input type="text" 
+               value="{{ widget.title|orempty|force_escape }}"
+               class="attribute roundedfield-padded" 
+               id=__title title="Optional" />
+      </td>
+    </tr>  
+    <tr>
+      <td></td>
+      <td>
+        <textarea id="__input" class="sectionwidget-edit">
+          {{ widget.contents }}
+        </textarea>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div id="__display">
+  <h2>{{ widget.title }}</h2>
+  <div>
+    {{ widget.contents }}
+  </div>
+</div>
+
+<script type="text/javascript" >
+  $("#__title").mixertwiddle().keydown(function (e) {
+    if (e.keyCode == 27) // Esc
+      $(this).blur()
+  })
+
+  __settings = {
+    theme_advanced_toolbar_align: "left", 
+    body_class: "wiki", 
+    content_css: "{% static_url js/tiny_mce/themes/advanced/skins/wiki/content.css %},{% static_url css/wiki.css %}",
+    theme_advanced_blockformats: "p,pre,h1,h2,h3",
+    relative_urls: false, 
+    document_base_url: "/",
+    theme_advanced_disable: "html,help",
+    theme_advanced_buttons3: "", 
+    skin: "wiki", 
+    theme_advanced_link_targets: "",
+    theme_advanced_toolbar_location: "top", 
+    theme_advanced_layout_manager: "SimpleLayout",
+    wiki_link: "__insert_link",
+    language: "en",
+    remove_script_host: true,
+    remove_redundant_brs: false,
+    theme_advanced_buttons1: "wiki_b,wiki_i,wiki_u,separator,wiki_link",
+    directionality: "ltr",
+    theme_advanced_buttons2: "",
+    width: "412",
+    theme: "advanced",
+    strict_loading_mode: 1,
+    plugins: "wiki,autoresize,safari,paste",
+    extended_valid_elements: "div[class|style]",
+    init_instance_callback: "__init_tinymce",
+    inline_styles: false,
+    paste_remove_styles: true,
+    paste_remove_spans: true,
+    paste_postprocess: function (p, doc) {
+      {% comment %}Strip all HTML w/ jquery from the paste.{% endcomment %}
+      doc.node.innerHTML = $("<p>" + $(doc.node).text() + "</p>").html()
+    }
+  }
+
+  function __init_tinymce(instance) {
+    instance.onKeyDown.add(function(ed, e) {
+      if (e.keyCode == 9 && !e.altKey && !e.ctrlKey) {
+        if (e.shiftKey)
+          ed.editorCommands.Outdent()
+        else
+          ed.editorCommands.Indent()
+        return tinymce.dom.Event.cancel(e)
+      }
+    })
+
+    // Here we need to do a little interface tweaking not 
+    // achieveable by configuration alone.
+    $('#__input_wiki_link').parent().attr('width', '100%');
+    $('#__input_wiki_link').parent().css('text-align', 'right');
+
+    {% comment %}
+    For some reason, tinyMCE sets a height on the containing table. 
+    Autoresizing doesn't work on Safari without removing this CSS
+    attribute.
+    {% endcomment %}
+    $("#__input_tbl").css("height", "")
+
+    $("#__display").hide()
+    $("#__textarea").fadeIn("fast")
+  }
+
+  function __unload_tinymce() {
+    var ed = tinyMCE.get("__input")
+    if (ed == null)
+      return  // already unloaded
+
+    tinyMCE.triggerSave()
+    $("#__textarea").hide()
+    var title = $("#__title").val()
+    if (title == $("#__title").attr("title"))
+      title = ""
+    $("#__display > h2").html(title)
+    $("#__display > div").html($("#__input").val())
+    $("#__display").show()
+
+    ed.remove()
+  }
+
+  function __load_tinymce() {
+    // Ghetto hack:
+    tinyMCE.settings = __settings
+    tinyMCE.execCommand("mceAddControl", true, "__input")
+  }
+
+  function __selected_link(slug, href, title) {
+    if (!title)
+      title = slug
+
+    var ed = tinyMCE.get("__input")
+    var text = ed.selection.getContent()
+    if (!text || text.length == 0)
+      text = title;
+
+    text = '<a href="' + href + '">' + text + '</a>';
+    ed.execCommand('mceReplaceContent', false, text);
+  }
+
+  function __insert_link(ed) {
+    var text = ed.selection.getContent();
+    $.mixerbox("{% widget_url widget "add-link-inline" %}?height=400&width=600&selection="+escape(text));
+  }
+
+  function __save_cb(cb) {
+    onecolumn_widgets.unbind('sortstart', __unload_tinymce)
+    onecolumn_widgets.unbind('sortstop', __load_tinymce)
+    __unload_tinymce()
+
+    var title = $("#__title").val()
+    if (title == $("#__title").attr("title"))
+      title = ""
+
+    {% widget_call widget "save" %}
+      { contents: $("#__input").val(), title: title }
+    {% widget_callback data %}
+      __html(data)
+      cb()
+    {% endwidget_call %}
+  }
+
+  __cancel_cb = __unload_tinymce
+
+  $(document).ready(function () {
+    onecolumn_widgets.bind('sortstart', __unload_tinymce)
+    onecolumn_widgets.bind('sortstop', __load_tinymce)
+    __load_tinymce()
+  })
+
+</script>
+

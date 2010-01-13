@@ -1,0 +1,26 @@
+{% load static %}
+
+{% block media %}
+{% endblock %}
+
+{% if not city_layout %}
+  <div class="section">
+    <div class="titlebar" style="margin-bottom:12px">
+      <div class="stripes">
+        <div class="stripe">
+          <div class="stripecontents">
+            <div class="group">
+              <img src="{% static_url img/icons/32x/about32x.png %}" /></div>
+            <div class="group lh27"><h2>About {{ about }}</h2></div>
+          </div>
+        </div>
+      </div>
+    </div>
+{% endif %}
+  <div class="sectioncontents wiki">
+    {% block content %}
+    {% endblock %}
+  </div>
+{% if not city_layout %}
+  </div>
+{% endif %}

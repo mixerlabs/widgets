@@ -1,0 +1,9 @@
+{% load user %}
+{% load goodtimes %}
+
+created by {{ page.creator_user_and_ip|linked_user_or_ip }}
+<span class="divider">&nbsp;|&nbsp;</span>
+edited 
+{{ page.edit_time|goodtimes:"1week" }}
+by
+{{ page.edit_user_and_ip|linked_user_or_ip }}

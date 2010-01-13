@@ -1,0 +1,15 @@
+{% if widget.title %}
+  <h3>{{ widget.title }}</h3>
+{% endif %}
+
+{% if widget.description %}
+  <div class="desc">
+    {{ widget.description }}
+  </div>
+{% endif %}
+
+<ul>
+  {% for item in widget.items %}
+    <li>{{item}}</li>
+  {% endfor %}
+</ul>

@@ -1,0 +1,315 @@
+{% extends base_template %}
+
+{% load static %}
+{% load widgets %}
+{% load english %}
+
+{% block media %}
+{{ block.super }}
+<script 
+  type="text/javascript" 
+  src="{% static_url js/jquery.ui.droppable.js %}">
+</script>
+<script 
+  type="text/javascript" 
+  src="{% static_url js/jquery.ui.draggable.js %}">
+</script>
+<script 
+  type="text/javascript" 
+  src="{% static_url js/jquery.ui.sortable.js %}">
+</script>
+  
+{% include "feedback/scripts.html" %}
+
+{% comment %}
+TODO: load on demand
+{% endcomment %}
+<script 
+   type="text/javascript" 
+   src="{% static_url js/tiny_mce/tiny_mce.js %}">
+</script>
+
+{% comment %}
+For the title bar:
+{% endcomment %}
+<script 
+   type="text/javascript"
+   src="{% static_url js/jquery.jeditable.mini.js %}">
+</script>
+{% endblock %}
+
+
+{% block head_title %}
+{{ head_title }}
+{% endblock %}
+
+{% block page_title %}
+<div id="widget_titlebar">
+  <div id="title_headerbar" class="headerbar widget-handle" style="display: none;">
+    <h2>Edit Page Title and Category</h2>
+  </div>
+  <div class="widget">
+    <div id="title_outer" class="text header">
+      <div class="handle" id="title_handle" style="margin-top:6px;">
+        <span class="noedit">
+            <a id="title_href" href="javascript:undefined" class="edit"
+               title="Click here to edit this page's title and category."
+               alt="edit page title and category"></a>
+        </span>
+      </div>
+      <div class="widgetcontents" style="position: relative;">
+        <div style="width:510px">
+          <div id="pagetitlebar" style="margin-bottom:0px;">
+            <div class="maincontents">
+              <h1>
+                <span id="page-title">{{ title }}</span>
+              </h1>
+            </div>
+            <div class="help mini">
+              {% if page.edit_time %}
+                {% include "widgets/_onecolumn_edit_info.html" %}
+                <span class="divider">&nbsp;|&nbsp;</span>
+              {% endif %}
+              Category: <span id="page-category" category_id="{{ page.category }}">{% widget_linked_category page.wiki.slug page.category %}</span>
+            </div>
+          </div>
+          <div id="pagetitleedit" style="display:none">
+            <div>
+              <div class="group-label" style="font-size:14px; margin-top:3px; color:#333; font-weight:bold;">Page Title:</div>
+              <input type="text" id="title_edit_text" style="width:300px" value="{{ title }}"/>
+            </div>
+            <div>
+              <div class="group-label" style="font-size:14px; margin-top:3px; color:#333; font-weight:bold;">Page Category:</div>
+              <select id="category_edit_select">
+                {% for id, category in categories.items %}
+                <option value="{{ id }}" {% ifequal id page.category %}selected="selected"{% endifequal %}>{{ category.title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="title_bar" style="display:none;">
+          <br />
+          <a href="javascript:onecolumn_title_save()" class="button-default">
+            <span>Save</span></a>
+          <a href="javascript:onecolumn_title_cancel()" class="button">
+            <span>Cancel</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<script type="text/javascript">
+  var onecolumn_widgets = null;
+  var onecolumn_move_callbacks = []
+  function onecolumn_add_move_callback(id, start, stop) {
+    onecolumn_move_callbacks[id] = { start: start, stop:stop }
+  }
+
+  $(document).ready(function() {
+    {% for addable in addables %}
+      $("#addable-{{ forloop.counter }}").click(function() {
+        {% widget_call page "add-widget" %}
+          { addable: "{{ addable }}" }
+        {% widget_callback data %}
+          $("div#widgetsbar ~ div#widgets").prepend(data)
+        {% endwidget_call %}
+      })
+    {% endfor %}
+
+    onecolumn_widgets = $("div#widgetsbar ~ div#widgets")
+    onecolumn_widgets.sortable({
+      // containment: 'div#widgetsbar ~ div#widgets',
+      opacity : 0.8,
+      axis    : 'y',
+      handle  : '.widget-handle',
+      // scroll  : true,
+      // scrollSensitivity: 40,
+      // tolerance: 'pointer',
+      cursor  : 'move',
+      containment : 'parent',
+      placeholder: 'drag-and-drop-placeholder',
+      forcePlaceholderSize: true,
+      update: function(event, ui) {
+        var order = []
+        $("div#widgetsbar ~ div#widgets > .widget").each(function() {
+          order.push($(this).attr('id'))
+        })
+
+        {% widget_call page "save-order" %}
+          { order: order.join(',') }
+        {% endwidget_call %}
+      }
+    })
+
+    $("a#title_href").click(function() {
+      onecolumn_title_edit()
+    })
+
+    onecolumn_title_enable_buttons()
+  })
+
+  function onecolumn_title_enable_buttons() {
+    $("div#title_handle")
+      .bind("mouseenter.titlebuttons", function () {
+        $("#title_outer").addClass("text-over")
+    }).bind("mouseleave.titlebuttons", function () {
+        $("#title_outer").removeClass("text-over")
+    })
+  }
+  
+  function onecolumn_title_disable_buttons() {
+    $("*").unbind(".titlebuttons")
+  }
+  
+  function onecolumn_title_edit() {
+    $("a#title_href").hide()
+    $("#pagetitlebar").hide()
+
+    $("div#title_bar").show()
+    $("#title_outer").addClass("text-over header-over")
+    $("div#title_headerbar").fadeIn(100)
+    $("#pagetitleedit").show()
+    
+    onecolumn_title_disable_buttons()
+    
+    $("#title_edit_text").keydown(function (e) {
+      if (e.keyCode == 27) {  // Esc
+        onecolumn_title_cancel()
+      }
+    }).keypress(function (e) {
+      if (e.keyCode == 13) { // Enter
+        onecolumn_title_save()
+      }
+    }).focus()
+  }
+
+
+  function onecolumn_title_save_or_cancel() {
+    $("a#title_href").show()
+    $("#pagetitlebar").show()
+    
+    $("div#title_bar").hide()
+    $("#title_outer").removeClass("text-over header-over")
+    $("div#title_headerbar").hide()
+    $("#pagetitleedit").hide()
+    
+    onecolumn_update_edit_info()
+    onecolumn_title_enable_buttons()
+  }
+
+  function onecolumn_title_save() {
+    {% widget_call page "save-title-category" %}
+      { 
+        title: $("#title_edit_text").attr("value"),
+        category: $("#category_edit_select")[0].options[$("#category_edit_select")[0].selectedIndex].value
+      }
+    {% widget_callback data %}
+      data = onecolumn_title_fields_data()
+      $("#page-title").text(data.title)
+      $("#page-category").attr("category_id", data.category)
+      $("#page-category").html("<a href='" + categories[data.category].url + 
+                                "'>" + categories[data.category].title + "</a>")
+      onecolumn_title_save_or_cancel()
+    {% endwidget_call %}
+  }
+
+  function onecolumn_title_cancel() {
+    onecolumn_title_save_or_cancel()
+  }
+
+  function onecolumn_title_fields_data() {
+    var data = {
+      title: $("#title_edit_text").attr("value"),
+      category: $("#category_edit_select")[0].options[$("#category_edit_select")[0].selectedIndex].value
+    }    
+    return data    
+  }
+    
+  function onecolumn_title_save_complete() {
+    data = onecolumn_title_fields_data()
+    $("#page-title").text(data.title)
+    $("#page-category").attr("category_id", data.category)
+    $("#page-category").html("<a href='" + categories[data.category].url + 
+                              "'>" + categories[data.category].title + "</a>")
+
+    $("a#title_href").show()
+    $("#pagetitlebar").show()
+
+    $("div#title_bar").hide()
+    $("#title_outer").removeClass("text-over")
+    $("div#title_headerbar").hide()
+    $("#pagetitleedit").hide()
+    
+    onecolumn_update_edit_info()
+    onecolumn_title_enable_buttons()
+  }
+
+  var categories = {
+    {% for id, category in categories.items %}
+      "{{ id }}": { title: "{{ category.title }}", 
+                    url: "{% widget_category_url page.wiki.slug id %}" }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  }
+    
+  function onecolumn_update_edit_info() {
+    {% widget_call page "get-edit-info" %}
+      {}
+    {% widget_callback data %}
+      if ($("#onecolumn_edit_info").html() != data) {
+        $("#onecolumn_edit_info").fadeOut(100, function() {
+          $(this).html(data).fadeIn()
+        })
+      }
+    {% endwidget_call %}
+  }
+
+  function onecolumn_dnd_placeholder() {
+    return $("#widgets .drag-and-drop-placeholder")
+  }
+
+  function onecolumn_gmap_marker_dragend(lat, lng) {
+    {% widget_call page "set-lat-lng" %}
+      { lat: lat, lng: lng }
+    {% endwidget_call %}
+  }
+</script>
+
+<div id="widgetsbar">
+  <div class="label">Add to This Page:</div>
+  {% for addable in addables %}
+    <a id="addable-{{ forloop.counter }}"
+       href="javascript:undefined" 
+       class="button-widget">
+      <span>{{ addable|an }} {{ addable|capfirst }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+<div id="widgets">
+
+{% for _, rendered in widgets %}
+  {{ rendered }}
+{% endfor %}
+
+</div> <!-- /widgets -->
+
+{% if url_id %}
+  {% include "reviews.html" %}
+{% endif %}
+
+{% endblock %}
+
+
+{% block upper_right_content %}
+
+{% with page.delegate as fb_obj %}
+  {% with "What Do You Think About This Page?" as fb_title %}
+    {% include "feedback/page.html" %}
+  {% endwith %}
+{% endwith %}
+
+{% endblock %}

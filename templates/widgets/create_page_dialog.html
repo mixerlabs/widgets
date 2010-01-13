@@ -1,0 +1,59 @@
+{% extends "dialog_base.html" %}
+
+{% block content %}
+  <h1 class="dialog">Create a page about {{ town }}</h1>
+  {% for error in form.non_field_errors %}
+    <p class="error emphasis">{{ error }}</p>
+  {% endfor %}
+  {% for field in form %}
+    {% for error in field.errors %}
+      <p class="error emphasis">{{ field.label }}: {{ error }}</p>
+    {% endfor %}
+  {% endfor %}      
+  <div class="stripes">
+    <form name="form" action="" method="post">
+      <div class="stripe"> 
+        <div class="stripecontents">
+          <table class="dialogform">
+            <tr> 
+                <td><div class="emphasis">Page Title:</div></td> 
+                <td><div class="emphasis">Page Category:</div></td> 
+            </tr> 
+            <tr> 
+                <td><div class="inputgroup">
+                  {{ form.title }}
+                <td><div class="inputgroup">
+                  {{ form.cat }}
+                </div></td> 
+            </tr>
+            {% if is_captcha_needed %}
+              <tr><td colspan="2">{{ form.captcha }}</td></tr>
+            {% endif %}                        
+          </table>
+        </div> 
+      </div>
+    </form>
+  </div>
+  <script type="text/javascript">
+    $(document).ready(function() {
+      init_dialog_form()
+      $("#{{ form.title.auto_id }}").focus()
+      {% for field in form reversed %}
+          {% if field.errors %}
+            $("#{{ field.auto_id }}").addClass("error")[0].focus()
+            scrollTo(0, 0)  // Prevent scrolling within the frame
+          {% endif %}
+      {% endfor %}
+    })
+  </script>      
+  <div class="dialogactions"> 
+    <div class="group"> 
+      <a href="javascript:$('form').submit()" class="button-default">
+        <span>Create This Page</span>
+      </a> 
+      <a href="javascript:parent.$.mixerbox.close()" class="button">
+        <span>Cancel</span>
+      </a> 
+    </div> 
+  </div>
+{% endblock %}

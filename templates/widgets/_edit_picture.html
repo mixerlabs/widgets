@@ -1,0 +1,14 @@
+{% load widgets %}
+
+<script type="text/javascript">
+  $('textarea#__input').autogrow();
+
+  function __save_cb(cb) {
+    {% widget_call widget "save" %}
+      { contents: $("#__input").val() }
+    {% widget_callback data %}
+      __html(data)
+      cb()
+    {% endwidget_call %}
+  };
+</script>

@@ -1,0 +1,78 @@
+{% load thumb %}
+
+{% comment %}
+Rounded corners!!
+{% endcomment %}
+
+{% with widget.picture|thumb:"150,300,Pillar" as thumb %}
+
+{% if widget.title %}
+  <h3>{{ widget.title }}</h3>
+{% endif %}
+<div id="__image">
+  <div class="centeredfloat-container">
+    <div class="centeredfloat-outer">
+      <div class="centeredfloat-inner">
+        <div class="roundedcornerwrap">
+          <div class="rounded6px-tl"></div>
+          <div class="rounded6px-tr"></div>
+          <div class="rounded6px-bl"></div>
+          <div class="rounded6px-br"></div>
+          <a href="{{ widget.img_link }}">
+            <img border="0" src="{{ widget.img_src }}" />
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="__thumb" style="display: none;">
+  <div class="centeredfloat-container">
+    <div class="centeredfloat-outer">
+      <div class="centeredfloat-inner">
+        <div class="roundedcornerwrap">
+          <div class="rounded6px-tl"></div>
+          <div class="rounded6px-tr"></div>
+          <div class="rounded6px-bl"></div>
+          <div class="rounded6px-br"></div>
+          <img width="{{ thumb.get_actual_thumb_size.0 }}"
+               height="{{ thumb.get_actual_thumb_size.1 }}"
+                />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="caption">
+  {{ widget.picture.caption }}
+</div>
+
+<script type="text/javascript">
+  function __load_thumb(event, ui) {
+    {% comment %}
+    Delay loading the image until it is actually moved.
+    {% endcomment %}
+    $("#__thumb img").attr('src', '{{ thumb }}')
+    $("#__image").hide()
+    $("#__thumb").show()
+    if ($(ui.item).find("#__image").length > 0) {
+      // It's us! Resize the placeholder.
+      onecolumn_dnd_placeholder().height($("#__thumb").height())
+    }
+  }
+
+  function __unload_thumb() {
+    $("#__thumb").hide()
+    $("#__image").show()
+  }
+
+  $(document).ready(function () {
+    onecolumn_widgets.bind('sortstart', __load_thumb)
+    onecolumn_widgets.bind('sortstop', __unload_thumb)
+  })
+  // XXX - unbind
+
+
+</script>
+
+{% endwith %}

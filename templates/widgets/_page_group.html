@@ -1,0 +1,31 @@
+{% load widgets %}
+{% load goodtimes %}
+<ol class="pagelist">
+  {% for page in page_set %}
+  <li>
+    <a href="{% widget_url page '' %}" class="emphasis">{{ page.title }}</a>    
+    <div class="pagelist-contents">
+      <div>
+        {% if show_last_edit_time and show_last_edit_user %}
+          {% widget_page_snippet page 70 %}
+        {% else %}
+          {% widget_page_snippet page 80 %}
+        {% endif %}
+        {% if show_last_edit_time %}
+          <span class="help">{{ page.modified_on|goodtimes }}</span>
+        {% endif %}
+        {% if show_last_edit_user and page.created_by %}
+          <span class="help">by</span>
+          {% widget_page_linked_user page '' %}
+        {% endif %}
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ol>
+<script type="text/javascript">
+$("a.bestoftoggle").click(function(e){
+  e.preventDefault();
+  $(this.parentNode).children().filter('.bestof').toggle();
+})
+</script>
